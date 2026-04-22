@@ -92,7 +92,7 @@ class _MainScreenState extends State<MainScreen> {
 
           // 上部のCarrelロゴ（タップで最初に戻る）
           Positioned(
-            top: 40,
+            top: MediaQuery.of(context).padding.top > 0 ? MediaQuery.of(context).padding.top + 16 : 40,
             left: 0,
             right: 0,
             child: Center(
@@ -216,7 +216,8 @@ class _DriftingMoodNodeState extends State<DriftingMoodNode> with SingleTickerPr
   late Random _random;
   late double _leftPos;
   late double _topPos;
-  late double _size;
+  // サイズのランダム係数（0.0 ~ 1.0）
+  late double _sizeFactor;
 
   @override
   void initState() {
@@ -243,7 +244,7 @@ class _DriftingMoodNodeState extends State<DriftingMoodNode> with SingleTickerPr
       _topPos = _random.nextDouble();
     } while ( (_leftPos - 0.5).abs() < 0.2 && (_topPos - 0.5).abs() < 0.2 );
     
-    _size = 180 + _random.nextDouble() * 150; // テキストが入るため少し大きめに
+    _sizeFactor = _random.nextDouble();
   }
 
   @override
@@ -254,8 +255,16 @@ class _DriftingMoodNodeState extends State<DriftingMoodNode> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    // 画面サイズに応じた円の基準サイズ
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
+    
+    final baseSize = isSmallScreen ? 120.0 : 180.0;
+    final varSize  = isSmallScreen ? 60.0 : 150.0;
+    final actualSize = baseSize + _sizeFactor * varSize;
+
     // ゆったりとした呼吸のような移動と拡大縮小
-    final moveOffset = sin(_controller.value * pi * 2) * 20;
+    final moveOffset = sin(_controller.value * pi * 2) * (isSmallScreen ? 10 : 20);
     final scale = 0.9 + sin(_controller.value * pi) * 0.15;
 
     return Align(
@@ -269,8 +278,8 @@ class _DriftingMoodNodeState extends State<DriftingMoodNode> with SingleTickerPr
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
               child: Container(
-                width: _size,
-                height: _size,
+                width: actualSize,
+                height: actualSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
@@ -289,14 +298,17 @@ class _DriftingMoodNodeState extends State<DriftingMoodNode> with SingleTickerPr
                         child: Container(color: Colors.transparent),
                       ),
                     ),
-                    Text(
-                      widget.text,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 2.0,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Text(
+                        widget.text,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: isSmallScreen ? 14 : 16,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 2.0,
+                        ),
                       ),
                     ),
                   ],
@@ -353,6 +365,10 @@ class _ManifestationScreenState extends State<ManifestationScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = MediaQuery.of(context).size.width < 600;
+    final coverWidth = isSmallScreen ? 160.0 : 220.0;
+    final coverHeight = isSmallScreen ? 240.0 : 330.0;
+
     return Center(
       child: AnimatedBuilder(
         animation: _animController,
@@ -365,7 +381,11 @@ class _ManifestationScreenState extends State<ManifestationScreen> with SingleTi
                 onTap: widget.onTapBook,
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
-                  child: _MockBookCover(color: widget.moodColor, width: 220, height: 330),
+                  child: _MockBookCover(
+                    color: widget.moodColor,
+                    width: coverWidth,
+                    height: coverHeight,
+                  ),
                 ),
               ),
             ),
@@ -387,11 +407,16 @@ class BookDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 700;
+    
+    final horizontalPadding = isSmallScreen ? 24.0 : 40.0;
+    final verticalPadding = isSmallScreen ? 80.0 : 100.0;
+    final coverWidth = isSmallScreen ? 180.0 : 240.0;
+    final coverHeight = isSmallScreen ? 270.0 : 360.0;
 
     return Center(
       child: SingleChildScrollView(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 100),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
           constraints: const BoxConstraints(maxWidth: 800),
           child: Flex(
             direction: isSmallScreen ? Axis.vertical : Axis.horizontal,
@@ -411,10 +436,10 @@ class BookDetailsScreen extends StatelessWidget {
                     ),
                   );
                 },
-                child: _MockBookCover(color: moodColor, width: 240, height: 360),
+                child: _MockBookCover(color: moodColor, width: coverWidth, height: coverHeight),
               ),
               
-              if (isSmallScreen) const SizedBox(height: 40) else const SizedBox(width: 60),
+              if (isSmallScreen) const SizedBox(height: 32) else const SizedBox(width: 60),
 
               // 書籍情報
               Expanded(
@@ -438,33 +463,33 @@ class BookDetailsScreen extends StatelessWidget {
                       Text(
                         '静かなる海',
                         style: TextStyle(
-                          fontSize: isSmallScreen ? 28 : 36,
+                          fontSize: isSmallScreen ? 24 : 36,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 2.0,
                           color: const Color(0xFF2C2C2C),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
+                      const SizedBox(height: 8),
+                      Text(
                         '著者: アンナ・カヴァル',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: isSmallScreen ? 14 : 18,
                           color: Colors.black54,
                           letterSpacing: 1.5,
                         ),
                       ),
-                      const SizedBox(height: 40),
+                      SizedBox(height: isSmallScreen ? 24 : 40),
                       Text(
                         '誰の記憶にも残っていない小さな港町。ある日、色彩を失った主人公は、海辺で見知らぬ古い手紙を拾う。\n\nそこには、未来の自分からの静かな警告が記されていた。他者との境界が曖昧に溶けていくような、神秘的で心洗われる読書体験。今のあなたに寄り添う、静謐な物語です。',
                         textAlign: isSmallScreen ? TextAlign.center : TextAlign.left,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 14 : 16,
                           height: 2.0,
-                          color: Color(0xFF4A4A4A),
+                          color: const Color(0xFF4A4A4A),
                           letterSpacing: 1.0,
                         ),
                       ),
-                      const SizedBox(height: 60),
+                      SizedBox(height: isSmallScreen ? 40 : 60),
                       
                       // モックアップのAmazonリンク
                       InkWell(
